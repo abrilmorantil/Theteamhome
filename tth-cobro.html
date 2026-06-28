@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>TTH — Registro de cobro</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; color: #1d1d1f; min-height: 100vh; }
+
+  .header { background: #1d1d1f; color: #fff; padding: 16px 20px; position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; }
+  .header-logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .header-sub { font-size: 12px; color: #888; }
+
+  .form-body { padding: 16px; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 32px; }
+
+  .card { background: #fff; border-radius: 14px; padding: 16px; }
+  .card-title { font-size: 11px; font-weight: 600; color: #888; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+
+  label.field-label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+  input[type=text], input[type=email], input[type=number], input[type=date], select, textarea {
+    width: 100%; padding: 11px 13px; border: 1.5px solid #e0e0e0; border-radius: 10px;
+    font-size: 15px; font-family: inherit; color: #1d1d1f; background: #fafafa;
+    -webkit-appearance: none; appearance: none; outline: none; transition: border-color 0.15s;
+  }
+  input[type=text]:focus, input[type=email]:focus, input[type=number]:focus, input[type=date]:focus, select:focus, textarea:focus { border-color: #1d1d1f; background: #fff; }
+  textarea { resize: none; line-height: 1.5; }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+
+  .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toggle-btn {
+    padding: 12px 8px; border: 1.5px solid #e0e0e0; border-radius: 10px;
+    font-size: 13px; font-weight: 500; text-align: center; cursor: pointer;
+    background: #fafafa; color: #1d1d1f; transition: all 0.15s;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    font-family: inherit;
+    -webkit-appearance: none; appearance: none;
+  }
+  .toggle-btn:active { transform: scale(0.98); }
+  .toggle-btn.selected { border-color: #1d1d1f; background: #1d1d1f; color: #fff; }
+
+  .servicios-list { display: flex; flex-direction: column; gap: 8px; }
+  .servicio-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border: 1.5px solid #e0e0e0; border-radius: 10px; cursor: pointer;
+    transition: all 0.15s; background: #fafafa;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-user-select: none; user-select: none;
+  }
+  .servicio-item:active { transform: scale(0.99); }
+  .servicio-item.selected { border-color: #1d1d1f; background: #f0f0f0; }
+  .checkbox-visual {
+    width: 20px; height: 20px; border: 2px solid #888; border-radius: 4px;
+    background: transparent; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .servicio-item.selected .checkbox-visual {
+    background: #1d1d1f; border-color: #1d1d1f;
+  }
+  .checkbox-visual::after {
+    content: ''; color: #fff; font-size: 14px; font-weight: bold; line-height: 1;
+  }
+  .servicio-item.selected .checkbox-visual::after { content: '✓'; }
+  .servicio-info { flex: 1; min-width: 0; }
+  .servicio-nombre { font-size: 14px; font-weight: 500; }
+  .servicio-precio { font-size: 12px; color: #888; }
+  .servicio-iva { font-size: 10px; padding: 2px 6px; border-radius: 20px; flex-shrink: 0; font-weight: 600; }
+  .iva-si { background: #e8f5e9; color: #2e7d32; }
+  .iva-no { background: #fce4ec; color: #c62828; }
+
+  .detalle-item { padding: 12px; border: 1.5px solid #e0e0e0; border-radius: 10px; background: #fafafa; margin-bottom: 8px; }
+  .detalle-item:last-child { margin-bottom: 0; }
+  .detalle-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .detalle-nombre { font-size: 14px; font-weight: 600; }
+  .detalle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .detalle-row:last-child { margin-bottom: 0; }
+  .detalle-row label { font-size: 13px; color: #555; flex: 1; }
+  .detalle-row input[type=number] { width: 120px; padding: 8px 10px; font-size: 14px; }
+  .iva-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; -webkit-user-select: none; user-select: none; }
+  .iva-toggle input[type=checkbox] { width: 18px; height: 18px; accent-color: #1d1d1f; cursor: pointer; }
+  .desglose { background: #fff; border-radius: 8px; padding: 10px 12px; margin-top: 8px; font-size: 12px; color: #555; }
+  .desglose-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .desglose-row:last-child { margin-bottom: 0; font-weight: 600; color: #1d1d1f; padding-top: 4px; border-top: 1px solid #e0e0e0; }
+
+  .total-bar { background: #1d1d1f; color: #fff; border-radius: 14px; padding: 16px 20px; }
+  .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; color: #aaa; }
+  .total-row:last-child { margin-bottom: 0; padding-top: 8px; border-top: 1px solid #333; }
+  .total-row.principal { font-size: 16px; color: #fff; }
+  .total-row.principal .total-valor { font-size: 24px; font-weight: 700; }
+
+  .btn-send { width: 100%; padding: 16px; background: #25D366; color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; -webkit-tap-highlight-color: transparent; }
+  .btn-send:active { transform: scale(0.98); opacity: 0.9; }
+  .btn-send:disabled { background: #888; cursor: not-allowed; opacity: 0.6; }
+  .btn-reset { width: 100%; padding: 12px; background: none; color: #888; border: 1.5px solid #e0e0e0; border-radius: 14px; font-size: 14px; cursor: pointer; margin-top: 4px; }
+
+  .error-msg { font-size: 12px; color: #c62828; margin-top: 4px; display: none; }
+  .error-msg.show { display: block; }
+
+  .alerta-uk { display: none; background: #fce4ec; border: 1.5px solid #c62828; color: #c62828; border-radius: 10px; padding: 12px; font-size: 13px; margin-top: 10px; line-height: 1.4; }
+  .alerta-uk.show { display: block; }
+  .alerta-uk strong { display: block; margin-bottom: 4px; font-size: 14px; }
+
+  .empty { text-align: center; padding: 20px; color: #999; font-size: 13px; font-style: italic; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #111; color: #f5f5f7; }
+    .card { background: #1c1c1e; }
+    input[type=text], input[type=email], input[type=number], input[type=date], select, textarea { background: #2c2c2e; border-color: #3a3a3c; color: #f5f5f7; }
+    input[type=text]:focus, input[type=email]:focus, input[type=number]:focus, input[type=date]:focus, select:focus, textarea:focus { background: #2c2c2e; border-color: #888; }
+    input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); }
+    .servicio-item, .detalle-item, .toggle-btn { background: #2c2c2e; border-color: #3a3a3c; color: #f5f5f7; }
+    .servicio-item.selected { background: #3a3a3c; border-color: #f5f5f7; }
+    .toggle-btn.selected { background: #f5f5f7; color: #1d1d1f; border-color: #f5f5f7; }
+    .desglose { background: #1c1c1e; color: #aaa; }
+    .desglose-row:last-child { color: #f5f5f7; border-top-color: #3a3a3c; }
+    .detalle-row label { color: #aaa; }
+    .btn-reset { border-color: #3a3a3c; color: #888; }
+    .alerta-uk { background: #3a1c20; border-color: #c62828; color: #ff6b7a; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">TTH</div>
+    <div class="header-sub">Registro de cobro</div>
+  </div>
+</div>
+
+<div class="form-body">
+
+  <!-- Centro / País / Fecha -->
+  <div class="card">
+    <div class="card-title">Centro y país</div>
+    <div class="field">
+      <label class="field-label">Centro</label>
+      <div class="toggle-grid">
+        <button type="button" class="toggle-btn" data-centro="TTH Poblenou" onclick="selectCentro(this)">Poblenou</button>
+        <button type="button" class="toggle-btn" data-centro="TTH Tetuán" onclick="selectCentro(this)">Tetuán</button>
+      </div>
+      <div class="error-msg" id="err-centro">Seleccioná un centro</div>
+    </div>
+    <div class="field">
+      <label class="field-label">País de facturación</label>
+      <div class="toggle-grid">
+        <button type="button" class="toggle-btn" data-pais="España" onclick="selectPais(this)">🇪🇸 España</button>
+        <button type="button" class="toggle-btn" data-pais="UK" onclick="selectPais(this)">🇬🇧 UK</button>
+      </div>
+      <div class="error-msg" id="err-pais">Seleccioná el país</div>
+    </div>
+    <div class="field">
+      <label class="field-label">Fecha</label>
+      <input type="date" id="fecha" />
+    </div>
+  </div>
+
+  <!-- Cliente -->
+  <div class="card">
+    <div class="card-title">Cliente</div>
+    <div class="field">
+      <label class="field-label">Nombre completo *</label>
+      <input type="text" id="cliente" placeholder="Nombre y apellidos" />
+      <div class="error-msg" id="err-cliente">Ingresá el nombre del cliente</div>
+    </div>
+    <div class="field">
+      <label class="field-label">DNI / NIE / CIF *</label>
+      <input type="text" id="dni" placeholder="12345678A" style="text-transform:uppercase" />
+      <div class="error-msg" id="err-dni">Ingresá el ID del cliente</div>
+    </div>
+    <div class="field">
+      <label class="field-label">Dirección (opcional)</label>
+      <input type="text" id="direccion" placeholder="Calle, número, ciudad" />
+    </div>
+    <div class="field">
+      <label class="field-label">Email (opcional)</label>
+      <input type="email" id="email" placeholder="cliente@email.com" />
+    </div>
+  </div>
+
+  <!-- Servicios disponibles -->
+  <div class="card">
+    <div class="card-title">Servicios disponibles</div>
+    <div class="servicios-list" id="servicios-list"></div>
+    <div class="error-msg" id="err-servicios" style="margin-top:8px;">Seleccioná al menos un servicio</div>
+  </div>
+
+  <!-- Detalle / edición -->
+  <div class="card">
+    <div class="card-title">Detalle del cobro</div>
+    <div id="detalle-list">
+      <div class="empty">Aún no seleccionaste servicios</div>
+    </div>
+    <div class="alerta-uk" id="alerta-uk">
+      <strong>⚠️ Facturación UK con IVA</strong>
+      Estás facturando a UK pero tenés items con IVA marcado. Desmarcá el IVA en esos items o cambiá el país a España.
+    </div>
+  </div>
+
+  <!-- Método de pago -->
+  <div class="card">
+    <div class="card-title">Método de pago</div>
+    <div class="field">
+      <input type="text" id="metodo" placeholder="ej. Bizum, transferencia, datáfono, efectivo..." />
+    </div>
+  </div>
+
+  <!-- Observaciones -->
+  <div class="card">
+    <div class="card-title">Observaciones (opcional)</div>
+    <div class="field">
+      <textarea id="observaciones" rows="3" placeholder="ej. pago en dos partes, factura a nombre de empresa, etc."></textarea>
+    </div>
+  </div>
+
+  <!-- Total -->
+  <div class="total-bar">
+    <div class="total-row"><span>Base imponible</span><span id="total-base">0,00 €</span></div>
+    <div class="total-row"><span>IVA</span><span id="total-iva">0,00 €</span></div>
+    <div class="total-row principal"><span>Total cobrado</span><span class="total-valor" id="total-final">0,00 €</span></div>
+  </div>
+
+  <button class="btn-send" id="btn-send" onclick="enviarWhatsApp()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.553 4.103 1.517 5.83L.057 23.999l6.302-1.653A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.805 9.805 0 01-5.007-1.374l-.359-.214-3.72.976.993-3.623-.234-.373A9.78 9.78 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>
+    Enviar por WhatsApp
+  </button>
+  <button class="btn-reset" onclick="resetForm()">Limpiar formulario</button>
+
+</div>
+
+<script>
+// ===== Catálogo de servicios (precios del Excel TTH) =====
+const SERVICIOS = [
+  { id: 'pack_5f',    nombre: 'Pack 5 FISIO',         total: 365,   ivaDefault: false, montoManual: false },
+  { id: 'pack_10f',   nombre: 'Pack 10 FISIO',        total: 639,   ivaDefault: false, montoManual: false },
+  { id: 'pack_20f',   nombre: 'Pack 20 FISIO',        total: 1179,  ivaDefault: false, montoManual: false },
+  { id: 'pack_5p',    nombre: 'Pack 5 PT',            total: 365,   ivaDefault: true,  montoManual: false },
+  { id: 'pack_10p',   nombre: 'Pack 10 PT',           total: 639,   ivaDefault: true,  montoManual: false },
+  { id: 'pack_20p',   nombre: 'Pack 20 PT',           total: 1179,  ivaDefault: true,  montoManual: false },
+  { id: 'pack_5t',    nombre: 'Pack 5 TWIN',          total: 465,   ivaDefault: true,  montoManual: false },
+  { id: 'pack_10t',   nombre: 'Pack 10 TWIN',         total: 839,   ivaDefault: true,  montoManual: false },
+  { id: 'pack_20t',   nombre: 'Pack 20 TWIN',         total: 1579,  ivaDefault: true,  montoManual: false },
+  { id: 'nutricion',  nombre: 'Nutrición',            total: 199,   ivaDefault: true,  montoManual: false },
+  { id: 'pack_20pol', nombre: 'Pack 20 PT Online',    total: 935,   ivaDefault: false, montoManual: false },
+  { id: 'bandaf',     nombre: 'Banda FC',             total: 45,    ivaDefault: true,  montoManual: false },
+  { id: 'toallas',    nombre: 'Servicio toallas (Towels)', total: 0, ivaDefault: true, montoManual: true },
+];
+
+// Estado: { [id]: { monto: number, iva: boolean } }
+const estado = {};
+let centroSel = '';
+let paisSel = '';
+
+// ===== Inicialización =====
+function fmt(n) {
+  const num = Math.round((n || 0) * 100) / 100;
+  const parts = num.toFixed(2).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return parts.join(',') + ' €';
+}
+
+function setFechaHoy() {
+  const hoy = new Date();
+  const d = String(hoy.getDate()).padStart(2,'0');
+  const m = String(hoy.getMonth()+1).padStart(2,'0');
+  document.getElementById('fecha').value = hoy.getFullYear() + '-' + m + '-' + d;
+}
+
+function formatearFecha(yyyymmdd) {
+  if (!yyyymmdd) return '';
+  const [y, m, d] = yyyymmdd.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function renderServicios() {
+  const list = document.getElementById('servicios-list');
+  list.innerHTML = '';
+  SERVICIOS.forEach(s => {
+    const item = document.createElement('div');
+    item.className = 'servicio-item';
+    item.setAttribute('role', 'button');
+    item.setAttribute('tabindex', '0');
+    item.dataset.id = s.id;
+    const precioTxt = s.montoManual ? 'monto a definir' : fmt(s.total);
+    const ivaTxt = s.ivaDefault ? '21% IVA' : 'Sin IVA';
+    const ivaClass = s.ivaDefault ? 'iva-si' : 'iva-no';
+    item.innerHTML = `
+      <div class="checkbox-visual"></div>
+      <div class="servicio-info">
+        <div class="servicio-nombre">${s.nombre}</div>
+        <div class="servicio-precio">${precioTxt}</div>
+      </div>
+      <span class="servicio-iva ${ivaClass}">${ivaTxt}</span>
+    `;
+    item.addEventListener('click', () => toggleServicio(s.id, item));
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleServicio(s.id, item);
+      }
+    });
+    list.appendChild(item);
+  });
+}
+
+function toggleServicio(id, item) {
+  if (estado[id]) {
+    delete estado[id];
+    item.classList.remove('selected');
+  } else {
+    const s = SERVICIOS.find(x => x.id === id);
+    estado[id] = { monto: s.total, iva: s.ivaDefault };
+    item.classList.add('selected');
+  }
+  renderDetalle();
+  calcularTotales();
+  document.getElementById('err-servicios').classList.remove('show');
+}
+
+function renderDetalle() {
+  const cont = document.getElementById('detalle-list');
+  const ids = Object.keys(estado);
+  if (ids.length === 0) {
+    cont.innerHTML = '<div class="empty">Aún no seleccionaste servicios</div>';
+    return;
+  }
+  cont.innerHTML = '';
+  ids.forEach(id => {
+    const s = SERVICIOS.find(x => x.id === id);
+    const st = estado[id];
+    const div = document.createElement('div');
+    div.className = 'detalle-item';
+    div.innerHTML = `
+      <div class="detalle-header">
+        <div class="detalle-nombre">${s.nombre}</div>
+      </div>
+      <div class="detalle-row">
+        <label>Importe cobrado (€)</label>
+        <input type="number" inputmode="decimal" step="0.01" min="0" value="${st.monto}" data-id="${id}" class="input-monto" />
+      </div>
+      <div class="detalle-row">
+        <label class="iva-toggle">
+          <input type="checkbox" data-id="${id}" class="input-iva" ${st.iva ? 'checked' : ''} />
+          Aplica IVA 21%
+        </label>
+      </div>
+      <div class="desglose" id="desglose-${id}"></div>
+    `;
+    cont.appendChild(div);
+  });
+
+  // Listeners
+  cont.querySelectorAll('.input-monto').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const id = e.target.dataset.id;
+      estado[id].monto = parseFloat(e.target.value) || 0;
+      actualizarDesglose(id);
+      calcularTotales();
+    });
+  });
+  cont.querySelectorAll('.input-iva').forEach(inp => {
+    inp.addEventListener('change', (e) => {
+      const id = e.target.dataset.id;
+      estado[id].iva = e.target.checked;
+      actualizarDesglose(id);
+      calcularTotales();
+    });
+  });
+
+  ids.forEach(id => actualizarDesglose(id));
+}
+
+function actualizarDesglose(id) {
+  const st = estado[id];
+  const el = document.getElementById('desglose-' + id);
+  if (!el) return;
+  const total = st.monto || 0;
+  if (st.iva) {
+    const base = total / 1.21;
+    const iva = total - base;
+    el.innerHTML = `
+      <div class="desglose-row"><span>Base imponible</span><span>${fmt(base)}</span></div>
+      <div class="desglose-row"><span>IVA 21%</span><span>${fmt(iva)}</span></div>
+      <div class="desglose-row"><span>Total</span><span>${fmt(total)}</span></div>
+    `;
+  } else {
+    el.innerHTML = `
+      <div class="desglose-row"><span>Sin IVA</span><span></span></div>
+      <div class="desglose-row"><span>Total</span><span>${fmt(total)}</span></div>
+    `;
+  }
+}
+
+function calcularTotales() {
+  let base = 0, iva = 0, total = 0;
+  Object.values(estado).forEach(st => {
+    const m = st.monto || 0;
+    if (st.iva) { base += m / 1.21; iva += m - m / 1.21; }
+    else { base += m; }
+    total += m;
+  });
+  document.getElementById('total-base').textContent = fmt(base);
+  document.getElementById('total-iva').textContent = fmt(iva);
+  document.getElementById('total-final').textContent = fmt(total);
+  validarUK();
+}
+
+function validarUK() {
+  const alerta = document.getElementById('alerta-uk');
+  const btn = document.getElementById('btn-send');
+  const hayIVA = Object.values(estado).some(s => s.iva && s.monto > 0);
+  const conflicto = paisSel === 'UK' && hayIVA;
+  alerta.classList.toggle('show', conflicto);
+  btn.disabled = conflicto;
+  return !conflicto;
+}
+
+function selectCentro(el) {
+  document.querySelectorAll('[data-centro]').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  centroSel = el.dataset.centro;
+  document.getElementById('err-centro').classList.remove('show');
+}
+
+function selectPais(el) {
+  document.querySelectorAll('[data-pais]').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  paisSel = el.dataset.pais;
+  document.getElementById('err-pais').classList.remove('show');
+  validarUK();
+}
+
+function enviarWhatsApp() {
+  let valid = true;
+  const cliente = document.getElementById('cliente').value.trim();
+  const dni = document.getElementById('dni').value.trim().toUpperCase();
+  const direccion = document.getElementById('direccion').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const fecha = document.getElementById('fecha').value.trim();
+
+  document.getElementById('err-centro').classList.toggle('show', !centroSel);
+  if (!centroSel) valid = false;
+  document.getElementById('err-pais').classList.toggle('show', !paisSel);
+  if (!paisSel) valid = false;
+  document.getElementById('err-cliente').classList.toggle('show', !cliente);
+  if (!cliente) valid = false;
+  document.getElementById('err-dni').classList.toggle('show', !dni);
+  if (!dni) valid = false;
+
+  const ids = Object.keys(estado);
+  document.getElementById('err-servicios').classList.toggle('show', ids.length === 0);
+  if (ids.length === 0) valid = false;
+
+  if (!validarUK()) valid = false;
+  if (!valid) return;
+
+  // Construir mensaje
+  let base = 0, iva = 0, total = 0;
+  let lineas = '';
+  ids.forEach(id => {
+    const s = SERVICIOS.find(x => x.id === id);
+    const st = estado[id];
+    const m = st.monto || 0;
+    if (st.iva) {
+      const b = m / 1.21, i = m - b;
+      lineas += `• ${s.nombre} — ${fmt(m)}\n   _base ${fmt(b)} + IVA ${fmt(i)}_\n`;
+      base += b; iva += i;
+    } else {
+      lineas += `• ${s.nombre} — ${fmt(m)}\n   _sin IVA_\n`;
+      base += m;
+    }
+    total += m;
+  });
+
+  const sep = '━━━━━━━━━━━━━━━━━━';
+  const metodo = document.getElementById('metodo').value.trim();
+  const observaciones = document.getElementById('observaciones').value.trim();
+
+  let msg = `*${centroSel.toUpperCase()}*  ·  ${paisSel}\n`;
+  msg += `Fecha: ${formatearFecha(fecha)}\n`;
+  msg += `${sep}\n\n`;
+  msg += `*CLIENTE*\n`;
+  msg += `${cliente}\n`;
+  msg += `ID: ${dni}\n`;
+  if (direccion) msg += `Dirección: ${direccion}\n`;
+  if (email) msg += `Email: ${email}\n`;
+  msg += `\n*SERVICIOS COBRADOS*\n${lineas}`;
+  msg += `\n${sep}\n`;
+  if (iva > 0) {
+    msg += `Base imponible: ${fmt(base)}\n`;
+    msg += `IVA: ${fmt(iva)}\n`;
+  }
+  msg += `*TOTAL: ${fmt(total)}*`;
+  if (metodo) msg += `\nMétodo de pago: ${metodo}`;
+  if (observaciones) msg += `\n\n*OBSERVACIONES*\n${observaciones}`;
+
+  window.open('https://wa.me/541168830235?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function resetForm() {
+  document.getElementById('cliente').value = '';
+  document.getElementById('dni').value = '';
+  document.getElementById('direccion').value = '';
+  document.getElementById('email').value = '';
+  document.getElementById('metodo').value = '';
+  document.getElementById('observaciones').value = '';
+  setFechaHoy();
+  document.querySelectorAll('[data-centro], [data-pais]').forEach(b => b.classList.remove('selected'));
+  centroSel = ''; paisSel = '';
+  Object.keys(estado).forEach(k => delete estado[k]);
+  renderServicios();
+  renderDetalle();
+  calcularTotales();
+  document.querySelectorAll('.error-msg').forEach(e => e.classList.remove('show'));
+  document.getElementById('alerta-uk').classList.remove('show');
+  document.getElementById('btn-send').disabled = false;
+}
+
+// Init
+setFechaHoy();
+renderServicios();
+calcularTotales();
+</script>
+</body>
+</html>
