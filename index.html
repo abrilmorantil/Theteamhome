@@ -252,6 +252,7 @@ const SERVICIOS = [
   { id: 'pack_20pol', nombre: 'Pack 20 PT Online',    total: 935,   ivaDefault: false, montoManual: false },
   { id: 'bandaf',     nombre: 'Banda FC',             total: 45,    ivaDefault: true,  montoManual: false },
   { id: 'toallas',    nombre: 'Servicio toallas (Towels)', total: 0, ivaDefault: true, montoManual: true },
+  { id: 'otro',       nombre: 'Otro producto',        total: 0,     ivaDefault: true,  montoManual: true, nombreManual: true },
 ];
 
 // Estado: { [id]: { monto: number, iva: boolean } }
@@ -289,7 +290,7 @@ function renderServicios() {
     item.setAttribute('role', 'button');
     item.setAttribute('tabindex', '0');
     item.dataset.id = s.id;
-    const precioTxt = s.montoManual ? 'monto a definir' : fmt(s.total);
+    const precioTxt = s.nombreManual ? 'nombre y monto a definir' : (s.montoManual ? 'monto a definir' : fmt(s.total));
     const ivaTxt = s.ivaDefault ? '21% IVA' : 'Sin IVA';
     const ivaClass = s.ivaDefault ? 'iva-si' : 'iva-no';
     item.innerHTML = `
@@ -317,7 +318,9 @@ function toggleServicio(id, item) {
     item.classList.remove('selected');
   } else {
     const s = SERVICIOS.find(x => x.id === id);
-    estado[id] = { monto: s.total, iva: s.ivaDefault };
+    const init = { monto: s.total, iva: s.ivaDefault };
+    if (s.nombreManual) init.nombre = '';
+    estado[id] = init;
     item.classList.add('selected');
   }
   renderDetalle();
@@ -338,10 +341,16 @@ function renderDetalle() {
     const st = estado[id];
     const div = document.createElement('div');
     div.className = 'detalle-item';
+    const nombreCampo = s.nombreManual ? `
+      <div class="detalle-row">
+        <label>Nombre del producto</label>
+        <input type="text" value="${st.nombre || ''}" data-id="${id}" class="input-nombre" placeholder="ej. Termo, gorra..." style="width:160px;padding:8px 10px;font-size:14px;" />
+      </div>` : '';
     div.innerHTML = `
       <div class="detalle-header">
         <div class="detalle-nombre">${s.nombre}</div>
       </div>
+      ${nombreCampo}
       <div class="detalle-row">
         <label>Importe cobrado (€)</label>
         <input type="number" inputmode="decimal" step="0.01" min="0" value="${st.monto}" data-id="${id}" class="input-monto" />
@@ -358,6 +367,12 @@ function renderDetalle() {
   });
 
   // Listeners
+  cont.querySelectorAll('.input-nombre').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const id = e.target.dataset.id;
+      estado[id].nombre = e.target.value;
+    });
+  });
   cont.querySelectorAll('.input-monto').forEach(inp => {
     inp.addEventListener('input', (e) => {
       const id = e.target.dataset.id;
@@ -462,6 +477,16 @@ function enviarWhatsApp() {
   if (!validarUK()) valid = false;
   if (!valid) return;
 
+  // Validar nombre en items con nombreManual
+  const sinNombre = ids.some(id => {
+    const s = SERVICIOS.find(x => x.id === id);
+    return s.nombreManual && (!estado[id].nombre || !estado[id].nombre.trim());
+  });
+  if (sinNombre) {
+    alert('Completá el nombre del producto en los items "Otro producto"');
+    return;
+  }
+
   // Construir mensaje
   let base = 0, iva = 0, total = 0;
   let lineas = '';
@@ -469,12 +494,13 @@ function enviarWhatsApp() {
     const s = SERVICIOS.find(x => x.id === id);
     const st = estado[id];
     const m = st.monto || 0;
+    const nombre = (s.nombreManual && st.nombre) ? st.nombre.trim() : s.nombre;
     if (st.iva) {
       const b = m / 1.21, i = m - b;
-      lineas += `• ${s.nombre} — ${fmt(m)}\n   _base ${fmt(b)} + IVA ${fmt(i)}_\n`;
+      lineas += `• ${nombre} — ${fmt(m)}\n   _base ${fmt(b)} + IVA ${fmt(i)}_\n`;
       base += b; iva += i;
     } else {
-      lineas += `• ${s.nombre} — ${fmt(m)}\n   _sin IVA_\n`;
+      lineas += `• ${nombre} — ${fmt(m)}\n   _sin IVA_\n`;
       base += m;
     }
     total += m;
