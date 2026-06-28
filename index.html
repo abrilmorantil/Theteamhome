@@ -167,12 +167,20 @@
   <div class="card">
     <div class="card-title">Cliente</div>
     <div class="field">
+      <label class="field-label">Tipo de cliente</label>
+      <div class="toggle-grid">
+        <button type="button" class="toggle-btn" data-tipo="existente" onclick="selectTipoCliente(this)">Existente</button>
+        <button type="button" class="toggle-btn" data-tipo="nuevo" onclick="selectTipoCliente(this)">Nuevo</button>
+      </div>
+      <div class="error-msg" id="err-tipo">Seleccioná si el cliente es nuevo o existente</div>
+    </div>
+    <div class="field">
       <label class="field-label">Nombre completo *</label>
       <input type="text" id="cliente" placeholder="Nombre y apellidos" />
       <div class="error-msg" id="err-cliente">Ingresá el nombre del cliente</div>
     </div>
     <div class="field">
-      <label class="field-label">DNI / NIE / CIF *</label>
+      <label class="field-label" id="label-dni">DNI / NIE / CIF</label>
       <input type="text" id="dni" placeholder="12345678A" style="text-transform:uppercase" />
       <div class="error-msg" id="err-dni">Ingresá el ID del cliente</div>
     </div>
@@ -259,6 +267,7 @@ const SERVICIOS = [
 const estado = {};
 let centroSel = '';
 let paisSel = '';
+let tipoCliente = '';
 
 // ===== Inicialización =====
 function fmt(n) {
@@ -453,6 +462,20 @@ function selectPais(el) {
   validarUK();
 }
 
+function selectTipoCliente(el) {
+  document.querySelectorAll('[data-tipo]').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  tipoCliente = el.dataset.tipo;
+  document.getElementById('err-tipo').classList.remove('show');
+  // Actualiza el asterisco del DNI según el tipo
+  const labelDni = document.getElementById('label-dni');
+  labelDni.textContent = tipoCliente === 'nuevo' ? 'DNI / NIE / CIF *' : 'DNI / NIE / CIF (opcional)';
+  // Si pasa a existente, limpia el error del DNI si lo había
+  if (tipoCliente === 'existente') {
+    document.getElementById('err-dni').classList.remove('show');
+  }
+}
+
 function enviarWhatsApp() {
   let valid = true;
   const cliente = document.getElementById('cliente').value.trim();
@@ -465,10 +488,14 @@ function enviarWhatsApp() {
   if (!centroSel) valid = false;
   document.getElementById('err-pais').classList.toggle('show', !paisSel);
   if (!paisSel) valid = false;
+  document.getElementById('err-tipo').classList.toggle('show', !tipoCliente);
+  if (!tipoCliente) valid = false;
   document.getElementById('err-cliente').classList.toggle('show', !cliente);
   if (!cliente) valid = false;
-  document.getElementById('err-dni').classList.toggle('show', !dni);
-  if (!dni) valid = false;
+  // DNI solo es obligatorio para cliente nuevo
+  const dniFalta = tipoCliente === 'nuevo' && !dni;
+  document.getElementById('err-dni').classList.toggle('show', dniFalta);
+  if (dniFalta) valid = false;
 
   const ids = Object.keys(estado);
   document.getElementById('err-servicios').classList.toggle('show', ids.length === 0);
@@ -513,9 +540,9 @@ function enviarWhatsApp() {
   let msg = `*${centroSel.toUpperCase()}*  ·  ${paisSel}\n`;
   msg += `Fecha: ${formatearFecha(fecha)}\n`;
   msg += `${sep}\n\n`;
-  msg += `*CLIENTE*\n`;
+  msg += `*CLIENTE ${tipoCliente === 'nuevo' ? 'NUEVO' : 'EXISTENTE'}*\n`;
   msg += `${cliente}\n`;
-  msg += `ID: ${dni}\n`;
+  if (dni) msg += `ID: ${dni}\n`;
   if (direccion) msg += `Dirección: ${direccion}\n`;
   if (email) msg += `Email: ${email}\n`;
   msg += `\n*SERVICIOS COBRADOS*\n${lineas}`;
@@ -539,8 +566,9 @@ function resetForm() {
   document.getElementById('metodo').value = '';
   document.getElementById('observaciones').value = '';
   setFechaHoy();
-  document.querySelectorAll('[data-centro], [data-pais]').forEach(b => b.classList.remove('selected'));
-  centroSel = ''; paisSel = '';
+  document.querySelectorAll('[data-centro], [data-pais], [data-tipo]').forEach(b => b.classList.remove('selected'));
+  centroSel = ''; paisSel = ''; tipoCliente = '';
+  document.getElementById('label-dni').textContent = 'DNI / NIE / CIF';
   Object.keys(estado).forEach(k => delete estado[k]);
   renderServicios();
   renderDetalle();
