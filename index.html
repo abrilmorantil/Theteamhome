@@ -152,6 +152,26 @@
     cursor: pointer; margin-top: 4px; font-family: inherit; touch-action: manipulation;
   }
 
+  /* ── BUSCADOR DE CLIENTES ── */
+  .resultados { margin-top:6px; max-height:210px; overflow-y:auto; border-radius:10px; }
+  .resultados:empty { display:none; }
+  .res-item {
+    padding:10px 12px; border:1.5px solid #e0e0e0; border-radius:10px; margin-bottom:6px;
+    background:#fafafa; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+  .res-item:active { transform:scale(0.99); }
+  .res-n { font-size:14px; font-weight:500; }
+  .res-d { font-size:12px; color:#888; }
+  .res-vacio { padding:10px 12px; font-size:13px; color:#888; font-style:italic; }
+  .elegido { display:none; margin-top:8px; padding:10px 12px; border-radius:10px;
+    border:1.5px solid #1d1d1f; background:#f0f0f0; }
+  .elegido.show { display:block; }
+  .elegido-n { font-size:14px; font-weight:600; }
+  .elegido-d { font-size:12px; color:#666; }
+  .btn-cambiar { background:none; border:none; color:#1d1d1f; font-size:12px;
+    text-decoration:underline; cursor:pointer; padding:4px 0 0; font-family:inherit; }
+
   /* ── ERRORES Y ALERTAS ── */
   .error-msg { font-size: 12px; color: #c62828; margin-top: 4px; display: none; }
   .error-msg.show { display: block; }
@@ -178,6 +198,11 @@
     .desglose-row:last-child { color: #f5f5f7; border-top-color: #3a3a3c; }
     .detalle-row label { color: #aaa; }
     .btn-reset { border-color: #3a3a3c; color: #888; }
+    .res-item { background:#2c2c2e; border-color:#3a3a3c; }
+    .res-d, .res-vacio { color:#888; }
+    .elegido { background:#3a3a3c; border-color:#f5f5f7; }
+    .elegido-d { color:#aaa; }
+    .btn-cambiar { color:#f5f5f7; }
     .alerta-uk { background: #3a1c20; border-color: #c62828; color: #ff6b7a; }
     label.field-label { color: #aaa; }
     .icon-factura { background: #1a3320; }
@@ -263,7 +288,14 @@
       </div>
       <div class="error-msg" id="err-tipo">Seleccioná si el cliente es nuevo o existente</div>
     </div>
-    <div class="field">
+    <div class="field" id="bloque-buscar" style="display:none">
+      <label class="field-label">Buscar cliente *</label>
+      <input type="text" id="f-buscar" placeholder="Nombre o NIF..." autocomplete="off" />
+      <div class="resultados" id="resultados"></div>
+      <div class="elegido" id="elegido"></div>
+      <div class="error-msg" id="err-elegido">Elegí el cliente de la lista</div>
+    </div>
+    <div class="field" id="bloque-nombre">
       <label class="field-label">Nombre completo *</label>
       <input type="text" id="f-cliente" placeholder="Nombre y apellidos" />
       <div class="error-msg" id="err-cliente">Ingresá el nombre del cliente</div>
@@ -439,6 +471,7 @@ const SERVICIOS = [
 const estado = {};
 let centroSel = '', paisSel = '', tipoCliente = '';
 let cobrado = '', metodoSel = '', totalGlobal = 0;
+let CLIENTES = [], clienteSel = null;
 
 // ══════════════════════════════════════════
 // UTILIDADES
@@ -530,6 +563,8 @@ function selectPais(el) {
   document.querySelectorAll('[data-pais]').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   paisSel = el.dataset.pais;
+  quitarCliente();
+  document.getElementById('resultados').innerHTML = '';
   document.getElementById('err-pais').classList.remove('show');
   validarUK();
 }
@@ -540,6 +575,14 @@ function selectTipoCliente(el) {
   document.getElementById('err-tipo').classList.remove('show');
   const lbl = document.getElementById('label-dni');
   lbl.textContent = tipoCliente === 'nuevo' ? 'DNI / NIE / CIF *' : 'DNI / NIE / CIF (opcional)';
+  const esNuevo = tipoCliente === 'nuevo';
+  document.getElementById('bloque-buscar').style.display = esNuevo ? 'none' : 'block';
+  document.getElementById('bloque-nombre').style.display = esNuevo ? 'block' : 'none';
+  document.getElementById('f-dni').parentElement.style.display = esNuevo ? 'block' : 'none';
+  document.getElementById('f-direccion').parentElement.style.display = esNuevo ? 'block' : 'none';
+  document.getElementById('f-email').parentElement.style.display = esNuevo ? 'block' : 'none';
+  if (esNuevo) quitarCliente();
+  document.getElementById('err-elegido').classList.remove('show');
   if (tipoCliente === 'existente') document.getElementById('err-dni').classList.remove('show');
 }
 
@@ -562,6 +605,78 @@ function selectMetodo(el) {
   el.classList.add('selected');
   metodoSel = el.dataset.metodo;
   document.getElementById('err-metodo').classList.remove('show');
+}
+
+// ══════════════════════════════════════════
+// BUSCADOR DE CLIENTES
+// La lista sale de Holded (la sincroniza un script) y se guarda en el móvil.
+// Al elegir de la lista viaja el id de Holded, así el proceso posterior no
+// tiene que adivinar a qué contacto va la factura.
+// ══════════════════════════════════════════
+function cargarClientes() {
+  try {
+    const cache = localStorage.getItem('tth_clientes');
+    if (cache) CLIENTES = JSON.parse(cache);
+  } catch (e) {}
+  if (!REG_URL || REG_URL.indexOf('PENDIENTE') === 0) return;
+  fetch(REG_URL + '?token=' + encodeURIComponent(REG_TOKEN) + '&action=clientes')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.ok && d.clientes && d.clientes.length) {
+        CLIENTES = d.clientes;
+        try { localStorage.setItem('tth_clientes', JSON.stringify(CLIENTES)); } catch (e) {}
+      }
+    })
+    .catch(function () { /* sin red: se usa la copia guardada */ });
+}
+
+function sinTildes(s) {
+  return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function buscarClientes() {
+  const q = sinTildes(document.getElementById('f-buscar').value.trim());
+  const cont = document.getElementById('resultados');
+  if (q.length < 2) { cont.innerHTML = ''; return; }
+
+  const cta = paisSel === 'UK' ? 'uk' : 'es';
+  const hallados = CLIENTES
+    .filter(function (c) { return (c.cuenta || 'es') === cta; })
+    .filter(function (c) { return sinTildes(c.nombre).indexOf(q) >= 0 || sinTildes(c.nif).indexOf(q) >= 0; })
+    .slice(0, 25);
+
+  if (!hallados.length) {
+    cont.innerHTML = '<div class="res-vacio">Sin resultados. Si es cliente nuevo, '
+                   + 'cambiá arriba a "Nuevo".</div>';
+    return;
+  }
+  cont.innerHTML = '';
+  hallados.forEach(function (c) {
+    const d = document.createElement('div');
+    d.className = 'res-item';
+    d.innerHTML = '<div class="res-n">' + c.nombre + '</div>'
+                + '<div class="res-d">' + (c.nif || 'sin NIF') + '</div>';
+    d.addEventListener('click', function () { elegirCliente(c); });
+    cont.appendChild(d);
+  });
+}
+
+function elegirCliente(c) {
+  clienteSel = c;
+  document.getElementById('resultados').innerHTML = '';
+  document.getElementById('f-buscar').value = '';
+  const el = document.getElementById('elegido');
+  el.innerHTML = '<div class="elegido-n">' + c.nombre + '</div>'
+               + '<div class="elegido-d">' + (c.nif || 'sin NIF') + '</div>'
+               + '<button type="button" class="btn-cambiar" onclick="quitarCliente()">cambiar</button>';
+  el.classList.add('show');
+  document.getElementById('err-elegido').classList.remove('show');
+}
+
+function quitarCliente() {
+  clienteSel = null;
+  document.getElementById('elegido').classList.remove('show');
+  document.getElementById('elegido').innerHTML = '';
 }
 
 function renderServicios() {
@@ -669,7 +784,9 @@ function validarUK() {
 
 function enviarFactura() {
   let ok = true;
-  const cliente  = document.getElementById('f-cliente').value.trim();
+  const cliente  = (tipoCliente === 'existente' && clienteSel)
+                   ? clienteSel.nombre
+                   : document.getElementById('f-cliente').value.trim();
   const dni      = document.getElementById('f-dni').value.trim().toUpperCase();
   const direccion= document.getElementById('f-direccion').value.trim();
   const email    = document.getElementById('f-email').value.trim();
@@ -682,8 +799,9 @@ function enviarFactura() {
   check('err-centro',  !centroSel);
   check('err-pais',    !paisSel);
   check('err-tipo',    !tipoCliente);
-  check('err-cliente', !cliente);
-  check('err-dni',     tipoCliente==='nuevo' && !dni);
+  check('err-elegido', tipoCliente === 'existente' && !clienteSel);
+  check('err-cliente', tipoCliente !== 'existente' && !cliente);
+  check('err-dni', tipoCliente === 'nuevo' && !dni);
   check('err-servicios', !Object.keys(estado).length);
   check('err-cobrado', !cobrado);
   if (cobrado === 'si') {
@@ -728,7 +846,9 @@ function enviarFactura() {
   registrar({
     tipo: 'factura',
     centro: centroSel, pais: paisSel, fecha: fecha,
-    cliente: { tipo: tipoCliente, nombre: cliente, dni: dni, direccion: direccion, email: email },
+    cliente: { tipo: tipoCliente, nombre: cliente, dni: dni,
+               direccion: direccion, email: email,
+               holded_id: clienteSel ? clienteSel.id : '' },
     lineas: regLineas,
     totales: { base: r2(base), iva: r2(iva), total: r2(total) },
     cobro: { pagado: cobrado === 'si', importe: r2(importe), metodo: metodoSel },
@@ -743,6 +863,11 @@ function resetFactura() {
   setFecha('f-fecha');
   document.querySelectorAll('[data-centro],[data-pais],[data-tipo]').forEach(b=>b.classList.remove('selected'));
   centroSel=''; paisSel=''; tipoCliente='';
+  quitarCliente();
+  document.getElementById('f-buscar').value='';
+  document.getElementById('resultados').innerHTML='';
+  document.getElementById('bloque-buscar').style.display='none';
+  document.getElementById('bloque-nombre').style.display='block';
   document.querySelectorAll('[data-cobrado],[data-metodo]').forEach(b=>b.classList.remove('selected'));
   cobrado=''; metodoSel='';
   document.getElementById('bloque-cobro').style.display='none';
@@ -803,6 +928,8 @@ setFecha('p-fecha');
 renderServicios();
 calcularTotales();
 vaciarCola();   // reintenta lo que quedara pendiente por falta de red
+cargarClientes();
+document.getElementById('f-buscar').addEventListener('input', buscarClientes);
 </script>
 </body>
 </html>
