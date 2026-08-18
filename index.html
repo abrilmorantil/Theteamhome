@@ -299,8 +299,32 @@
   </div>
 
   <div class="card">
-    <div class="card-title">Método de pago</div>
-    <input type="text" id="f-metodo" placeholder="ej. Bizum, transferencia, datáfono..." />
+    <div class="card-title">Cobro</div>
+    <div class="field">
+      <label class="field-label">¿Se ha cobrado?</label>
+      <div class="toggle-grid">
+        <button type="button" class="toggle-btn" data-cobrado="si" onclick="selectCobrado(this)">Sí, cobrado</button>
+        <button type="button" class="toggle-btn" data-cobrado="no" onclick="selectCobrado(this)">Todavía no</button>
+      </div>
+      <div class="error-msg" id="err-cobrado">Indicá si la factura ya se cobró</div>
+    </div>
+    <div id="bloque-cobro" style="display:none">
+      <div class="field">
+        <label class="field-label">Importe cobrado (€) *</label>
+        <input type="number" inputmode="decimal" step="0.01" min="0" id="f-importe" placeholder="0,00" />
+        <div class="error-msg" id="err-importe">Ingresá cuánto se cobró</div>
+      </div>
+      <div class="field">
+        <label class="field-label">Método de pago *</label>
+        <div class="toggle-grid">
+          <button type="button" class="toggle-btn" data-metodo="Efectivo" onclick="selectMetodo(this)">Efectivo</button>
+          <button type="button" class="toggle-btn" data-metodo="Datáfono" onclick="selectMetodo(this)">Datáfono</button>
+          <button type="button" class="toggle-btn" data-metodo="Transferencia BBVA" onclick="selectMetodo(this)">Transf. BBVA</button>
+          <button type="button" class="toggle-btn" data-metodo="Transferencia Abanca" onclick="selectMetodo(this)">Transf. Abanca</button>
+        </div>
+        <div class="error-msg" id="err-metodo">Seleccioná el método de pago</div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -414,6 +438,7 @@ const SERVICIOS = [
 
 const estado = {};
 let centroSel = '', paisSel = '', tipoCliente = '';
+let cobrado = '', metodoSel = '', totalGlobal = 0;
 
 // ══════════════════════════════════════════
 // UTILIDADES
@@ -518,6 +543,27 @@ function selectTipoCliente(el) {
   if (tipoCliente === 'existente') document.getElementById('err-dni').classList.remove('show');
 }
 
+function selectCobrado(el) {
+  document.querySelectorAll('[data-cobrado]').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  cobrado = el.dataset.cobrado;
+  document.getElementById('bloque-cobro').style.display = cobrado === 'si' ? 'block' : 'none';
+  if (cobrado === 'si') {
+    const imp = document.getElementById('f-importe');
+    if (!imp.value) imp.value = totalGlobal.toFixed(2);   // por defecto, el total
+  } else {
+    ['err-importe','err-metodo'].forEach(id => document.getElementById(id).classList.remove('show'));
+  }
+  document.getElementById('err-cobrado').classList.remove('show');
+}
+
+function selectMetodo(el) {
+  document.querySelectorAll('[data-metodo]').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  metodoSel = el.dataset.metodo;
+  document.getElementById('err-metodo').classList.remove('show');
+}
+
 function renderServicios() {
   const list = document.getElementById('servicios-list');
   list.innerHTML = '';
@@ -609,6 +655,7 @@ function calcularTotales() {
   document.getElementById('total-base').textContent = fmt(base);
   document.getElementById('total-iva').textContent  = fmt(iva);
   document.getElementById('total-final').textContent= fmt(total);
+  totalGlobal = total;
   validarUK();
 }
 
@@ -627,7 +674,8 @@ function enviarFactura() {
   const direccion= document.getElementById('f-direccion').value.trim();
   const email    = document.getElementById('f-email').value.trim();
   const fecha    = document.getElementById('f-fecha').value;
-  const metodo   = document.getElementById('f-metodo').value.trim();
+  const importe  = parseFloat(document.getElementById('f-importe').value) || 0;
+  const metodo   = cobrado === 'si' ? metodoSel : '';
   const obs      = document.getElementById('f-observaciones').value.trim();
 
   const check = (id, cond) => { document.getElementById(id).classList.toggle('show', cond); if(cond) ok=false; };
@@ -637,6 +685,11 @@ function enviarFactura() {
   check('err-cliente', !cliente);
   check('err-dni',     tipoCliente==='nuevo' && !dni);
   check('err-servicios', !Object.keys(estado).length);
+  check('err-cobrado', !cobrado);
+  if (cobrado === 'si') {
+    check('err-importe', !(importe > 0));
+    check('err-metodo', !metodoSel);
+  }
   if (!validarUK()) ok = false;
   if (!ok) return;
 
@@ -664,7 +717,12 @@ function enviarFactura() {
   msg += `\n*SERVICIOS COBRADOS*\n${lineas}\n${SEP}\n`;
   if (iva>0) { msg += `Base imponible: ${fmt(base)}\nIVA: ${fmt(iva)}\n`; }
   msg += `*TOTAL: ${fmt(total)}*`;
-  if (metodo) msg += `\nMétodo de pago: ${metodo}`;
+  if (cobrado === 'si') {
+    msg += `\nCobrado: ${fmt(importe)} — ${metodoSel}`;
+    if (Math.abs(importe - total) > 0.005) msg += ` _(pago parcial)_`;
+  } else {
+    msg += `\n*PENDIENTE DE COBRO*`;
+  }
   if (obs) msg += `\n\n*OBSERVACIONES*\n${obs}`;
 
   registrar({
@@ -673,6 +731,7 @@ function enviarFactura() {
     cliente: { tipo: tipoCliente, nombre: cliente, dni: dni, direccion: direccion, email: email },
     lineas: regLineas,
     totales: { base: r2(base), iva: r2(iva), total: r2(total) },
+    cobro: { pagado: cobrado === 'si', importe: r2(importe), metodo: metodoSel },
     metodo_pago: metodo, observaciones: obs,
     mensaje: msg
   });
@@ -680,10 +739,14 @@ function enviarFactura() {
 }
 
 function resetFactura() {
-  ['f-cliente','f-dni','f-direccion','f-email','f-metodo','f-observaciones'].forEach(id => document.getElementById(id).value='');
+  ['f-cliente','f-dni','f-direccion','f-email','f-observaciones'].forEach(id => document.getElementById(id).value='');
   setFecha('f-fecha');
   document.querySelectorAll('[data-centro],[data-pais],[data-tipo]').forEach(b=>b.classList.remove('selected'));
   centroSel=''; paisSel=''; tipoCliente='';
+  document.querySelectorAll('[data-cobrado],[data-metodo]').forEach(b=>b.classList.remove('selected'));
+  cobrado=''; metodoSel='';
+  document.getElementById('bloque-cobro').style.display='none';
+  document.getElementById('f-importe').value='';
   document.getElementById('label-dni').textContent='DNI / NIE / CIF';
   Object.keys(estado).forEach(k=>delete estado[k]);
   renderServicios(); renderDetalle(); calcularTotales();
