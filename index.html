@@ -396,19 +396,19 @@ function irHome() {
 // CATÁLOGO DE SERVICIOS
 // ══════════════════════════════════════════
 const SERVICIOS = [
-  { id: 'pack_5f',    nombre: 'Pack 5 FISIO',              total: 365,  ivaDefault: false, montoManual: false },
-  { id: 'pack_10f',   nombre: 'Pack 10 FISIO',             total: 639,  ivaDefault: false, montoManual: false },
-  { id: 'pack_20f',   nombre: 'Pack 20 FISIO',             total: 1179, ivaDefault: false, montoManual: false },
-  { id: 'pack_5p',    nombre: 'Pack 5 PT',                 total: 365,  ivaDefault: true,  montoManual: false },
-  { id: 'pack_10p',   nombre: 'Pack 10 PT',                total: 639,  ivaDefault: true,  montoManual: false },
-  { id: 'pack_20p',   nombre: 'Pack 20 PT',                total: 1179, ivaDefault: true,  montoManual: false },
-  { id: 'pack_5t',    nombre: 'Pack 5 TWIN',               total: 465,  ivaDefault: true,  montoManual: false },
-  { id: 'pack_10t',   nombre: 'Pack 10 TWIN',              total: 839,  ivaDefault: true,  montoManual: false },
-  { id: 'pack_20t',   nombre: 'Pack 20 TWIN',              total: 1579, ivaDefault: true,  montoManual: false },
-  { id: 'nutricion',  nombre: 'Nutrición',                 total: 199,  ivaDefault: true,  montoManual: false },
-  { id: 'pack_20pol', nombre: 'Pack 20 PT Online',         total: 935,  ivaDefault: false, montoManual: false },
-  { id: 'bandaf',     nombre: 'Banda FC',                  total: 45,   ivaDefault: true,  montoManual: false },
-  { id: 'toallas',    nombre: 'Servicio toallas (Towels)', total: 0,    ivaDefault: true,  montoManual: true  },
+  {id: 'pack_5f',    nombre: 'Pack 5 FISIO',              total: 365,  ivaDefault: false, montoManual: false, holded: '66a90f0e11ea7c0e420ac8fc' },
+  {id: 'pack_10f',   nombre: 'Pack 10 FISIO',             total: 639,  ivaDefault: false, montoManual: false, holded: '66a90f26eb4aa6287a0ef188' },
+  {id: 'pack_20f',   nombre: 'Pack 20 FISIO',             total: 1179, ivaDefault: false, montoManual: false, holded: '66a90f3fdd5fa3e0e20fbb00' },
+  {id: 'pack_5p',    nombre: 'Pack 5 PT',                 total: 365,  ivaDefault: true,  montoManual: false, holded: '66abc912ba92bb5ad201a984' },
+  {id: 'pack_10p',   nombre: 'Pack 10 PT',                total: 639,  ivaDefault: true,  montoManual: false, holded: '66abc984f19f74af30056138' },
+  {id: 'pack_20p',   nombre: 'Pack 20 PT',                total: 1179, ivaDefault: true,  montoManual: false, holded: '66abc99fec6373ee7107d142' },
+  {id: 'pack_5t',    nombre: 'Pack 5 TWIN',               total: 465,  ivaDefault: true,  montoManual: false, holded: '66abc9d27aeaab604e0d2a44' },
+  {id: 'pack_10t',   nombre: 'Pack 10 TWIN',              total: 839,  ivaDefault: true,  montoManual: false, holded: '66abc9f8fdaabbd30f0ffd05' },
+  {id: 'pack_20t',   nombre: 'Pack 20 TWIN',              total: 1579, ivaDefault: true,  montoManual: false, holded: '66abca167aeaab604e0d2a45' },
+  {id: 'nutricion',  nombre: 'Nutrición',                 total: 199,  ivaDefault: true,  montoManual: false, holded: '66abca40eb11a3d0c30642b3' },
+  {id: 'pack_20pol', nombre: 'Pack 20 PT Online',         total: 935,  ivaDefault: false, montoManual: false, holded: '66cd986c5e0e25af600902bb' },
+  {id: 'bandaf',     nombre: 'Banda FC',                  total: 45,   ivaDefault: true,  montoManual: false, holded: '6a3e98505a106383b20f669c' },
+  {id: 'toallas',    nombre: 'Servicio toallas (Towels)', total: 0,    ivaDefault: true,  montoManual: true, holded: '6a416456dcbb9172850f0342' },
   { id: 'otro',       nombre: 'Otro producto',             total: 0,    ivaDefault: true,  montoManual: true, nombreManual: true },
 ];
 
@@ -438,6 +438,59 @@ function fmtFecha(v) {
 const WA = 'https://wa.me/34679288941?text=';
 const SEP = '━━━━━━━━━━━━━━━━━━';
 const WASVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.553 4.103 1.517 5.83L.057 23.999l6.302-1.653A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.805 9.805 0 01-5.007-1.374l-.359-.214-3.72.976.993-3.623-.234-.373A9.78 9.78 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>`;
+
+// ══════════════════════════════════════════
+// REGISTRO ESTRUCTURADO
+// Corre por detrás del envío de WhatsApp. Para quien usa el formulario no
+// cambia nada: el WhatsApp se abre igual y a la misma velocidad de siempre.
+// ══════════════════════════════════════════
+const REG_URL   = 'PENDIENTE_URL_APPS_SCRIPT';   // URL /exec del Apps Script
+const REG_TOKEN = 'PENDIENTE_TOKEN';             // token compartido
+const REG_COLA  = 'tth_cola_v1';
+
+const r2 = n => Math.round((n || 0) * 100) / 100;
+
+function uuid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'r-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+function leerCola() {
+  try { return JSON.parse(localStorage.getItem(REG_COLA) || '[]'); } catch (e) { return []; }
+}
+function guardarCola(c) {
+  try { localStorage.setItem(REG_COLA, JSON.stringify(c)); } catch (e) {}
+}
+
+// 1) Guarda en local de forma síncrona: no se pierde aunque no haya cobertura.
+// 2) Intenta enviarlo sin bloquear la apertura de WhatsApp.
+function registrar(payload) {
+  payload.id = uuid();
+  payload.enviado_en = new Date().toISOString();
+  payload.app_version = 2;
+  const cola = leerCola();
+  cola.push(payload);
+  guardarCola(cola);
+  vaciarCola();
+}
+
+function vaciarCola() {
+  if (!REG_URL || REG_URL.indexOf('PENDIENTE') === 0) return;   // aún sin configurar
+  const pendientes = leerCola();
+  if (!pendientes.length) return;
+  fetch(REG_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    keepalive: true,
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // evita el preflight CORS
+    body: JSON.stringify({ token: REG_TOKEN, registros: pendientes })
+  }).then(function () {
+    const enviados = {};
+    pendientes.forEach(function (r) { enviados[r.id] = 1; });
+    guardarCola(leerCola().filter(function (r) { return !enviados[r.id]; }));
+  }).catch(function () {
+    /* sin red: se queda en cola y reintenta al próximo envío o al recargar */
+  });
+}
 
 // ══════════════════════════════════════════
 // FORM FACTURA
@@ -591,12 +644,16 @@ function enviarFactura() {
   if (sinNombre) { alert('Completá el nombre del producto en los items "Otro producto"'); return; }
 
   let base=0, iva=0, total=0, lineas='';
+  const regLineas = [];
   Object.keys(estado).forEach(id => {
     const s=SERVICIOS.find(x=>x.id===id), st=estado[id], m=st.monto||0;
     const nombre = (s.nombreManual && st.nombre) ? st.nombre.trim() : s.nombre;
-    if (st.iva) { const b=m/1.21,i=m-b; lineas+=`• ${nombre} — ${fmt(m)}\n   _base ${fmt(b)} + IVA ${fmt(i)}_\n`; base+=b; iva+=i; }
-    else { lineas+=`• ${nombre} — ${fmt(m)}\n   _sin IVA_\n`; base+=m; }
+    let lb, lc;
+    if (st.iva) { const b=m/1.21,i=m-b; lineas+=`• ${nombre} — ${fmt(m)}\n   _base ${fmt(b)} + IVA ${fmt(i)}_\n`; base+=b; iva+=i; lb=b; lc=i; }
+    else { lineas+=`• ${nombre} — ${fmt(m)}\n   _sin IVA_\n`; base+=m; lb=m; lc=0; }
     total+=m;
+    regLineas.push({ form_id: s.id, holded_id: s.holded || null, nombre: nombre,
+                     bruto: r2(m), base: r2(lb), cuota: r2(lc), iva: !!st.iva });
   });
 
   let msg = `*${centroSel.toUpperCase()}*  ·  ${paisSel}\nFecha: ${fmtFecha(fecha)}\n${SEP}\n\n`;
@@ -610,6 +667,15 @@ function enviarFactura() {
   if (metodo) msg += `\nMétodo de pago: ${metodo}`;
   if (obs) msg += `\n\n*OBSERVACIONES*\n${obs}`;
 
+  registrar({
+    tipo: 'factura',
+    centro: centroSel, pais: paisSel, fecha: fecha,
+    cliente: { tipo: tipoCliente, nombre: cliente, dni: dni, direccion: direccion, email: email },
+    lineas: regLineas,
+    totales: { base: r2(base), iva: r2(iva), total: r2(total) },
+    metodo_pago: metodo, observaciones: obs,
+    mensaje: msg
+  });
   window.open(WA + encodeURIComponent(msg), '_blank');
 }
 
@@ -649,6 +715,12 @@ function enviarPago() {
   if (!ok) return;
   let msg = `*TTH — REGISTRO DE PAGO*\nFecha: ${fmtFecha(fecha)}\n${SEP}\n`;
   msg += `Cliente: ${cliente}\nMonto: *${monto} €*\nPago: *${vp.pago}*\nMétodo: ${vp.metodo}`;
+  registrar({
+    tipo: 'pago',
+    fecha: fecha, cliente: cliente, monto: monto,
+    numero_pago: vp.pago, metodo: vp.metodo,
+    mensaje: msg
+  });
   window.open(WA + encodeURIComponent(msg), '_blank');
 }
 function resetPago() {
@@ -667,6 +739,7 @@ setFecha('f-fecha');
 setFecha('p-fecha');
 renderServicios();
 calcularTotales();
+vaciarCola();   // reintenta lo que quedara pendiente por falta de red
 </script>
 </body>
 </html>
