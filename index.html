@@ -88,6 +88,7 @@
   }
   .toggle-btn:active { transform: scale(0.98); }
   .toggle-btn.selected { border-color: #1d1d1f; background: #1d1d1f; color: #fff; }
+  .toggle-btn.ancho { grid-column: 1 / -1; }
 
   /* ── SERVICIOS ── */
   .servicios-list { display: flex; flex-direction: column; gap: 8px; }
@@ -353,6 +354,7 @@
           <button type="button" class="toggle-btn" data-metodo="Datáfono" onclick="selectMetodo(this)">Datáfono</button>
           <button type="button" class="toggle-btn" data-metodo="Transferencia BBVA" onclick="selectMetodo(this)">Transf. BBVA</button>
           <button type="button" class="toggle-btn" data-metodo="Transferencia Abanca" onclick="selectMetodo(this)">Transf. Abanca</button>
+          <button type="button" class="toggle-btn ancho" data-metodo="Transferencia Wise" onclick="selectMetodo(this)" style="display:none">Transf. Wise</button>
         </div>
         <div class="error-msg" id="err-metodo">Seleccioná el método de pago</div>
       </div>
@@ -470,6 +472,14 @@ const SERVICIOS = [
   { id: 'otro',       nombre: 'Otro producto',             total: 0,    ivaDefault: true,  montoManual: true, nombreManual: true },
 ];
 
+// Cada país cobra en los bancos de su cuenta de Holded: la de UK solo tiene Wise.
+const METODOS_POR_PAIS = {
+  'España': ['Efectivo', 'Datáfono', 'Transferencia BBVA', 'Transferencia Abanca'],
+  'UK':     ['Transferencia Wise'],
+};
+const CUENTA_DE_PAIS = { 'España': 'es', 'UK': 'uk' };
+const NOMBRE_CUENTA  = { es: 'España', uk: 'UK' };
+
 const estado = {};
 let centroSel = '', paisSel = '', tipoCliente = '';
 let cobrado = '', metodoSel = '', totalGlobal = 0;
@@ -565,9 +575,12 @@ function selectPais(el) {
   document.querySelectorAll('[data-pais]').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   paisSel = el.dataset.pais;
-  quitarCliente();
+  // La lista de clientes es la misma para los dos países: el cliente elegido
+  // se mantiene y solo cambia el aviso de si hay que darlo de alta.
+  if (clienteSel) pintarElegido();
   document.getElementById('resultados').innerHTML = '';
   document.getElementById('err-pais').classList.remove('show');
+  actualizarMetodos();
   validarUK();
 }
 function selectTipoCliente(el) {
@@ -596,6 +609,7 @@ function selectCobrado(el) {
   if (cobrado === 'si') {
     const imp = document.getElementById('f-importe');
     if (!imp.value) imp.value = totalGlobal.toFixed(2);   // por defecto, el total
+    actualizarMetodos();
   } else {
     ['err-importe','err-metodo'].forEach(id => document.getElementById(id).classList.remove('show'));
   }
@@ -603,10 +617,26 @@ function selectCobrado(el) {
 }
 
 function selectMetodo(el) {
-  document.querySelectorAll('[data-metodo]').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('#bloque-cobro [data-metodo]').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   metodoSel = el.dataset.metodo;
   document.getElementById('err-metodo').classList.remove('show');
+}
+
+// Muestra solo los métodos del país elegido (sin país, los de España).
+// Si el que estaba marcado no vale para ese país se desmarca, y si solo
+// queda uno (UK -> Wise) se marca solo.
+function actualizarMetodos() {
+  const validos = METODOS_POR_PAIS[paisSel] || METODOS_POR_PAIS['España'];
+  const botones = document.querySelectorAll('#bloque-cobro [data-metodo]');
+  botones.forEach(b => { b.style.display = validos.indexOf(b.dataset.metodo) >= 0 ? '' : 'none'; });
+  if (metodoSel && validos.indexOf(metodoSel) < 0) {
+    metodoSel = '';
+    botones.forEach(b => b.classList.remove('selected'));
+  }
+  if (!metodoSel && validos.length === 1 && cobrado === 'si') {
+    botones.forEach(b => { if (b.dataset.metodo === validos[0]) selectMetodo(b); });
+  }
 }
 
 // ══════════════════════════════════════════
@@ -614,22 +644,57 @@ function selectMetodo(el) {
 // La lista sale de Holded (la sincroniza un script) y se guarda en el móvil.
 // Al elegir de la lista viaja el id de Holded, así el proceso posterior no
 // tiene que adivinar a qué contacto va la factura.
+//
+// Se ven los clientes de las dos cuentas (España y UK) sea cual sea el país.
+// Si se factura en una cuenta donde el cliente todavía no está, la
+// facturación lo da de alta allí copiando su ficha de la otra cuenta.
 // ══════════════════════════════════════════
 function cargarClientes() {
   try {
     const cache = localStorage.getItem('tth_clientes');
-    if (cache) CLIENTES = JSON.parse(cache);
+    if (cache) CLIENTES = unirClientes(JSON.parse(cache));
   } catch (e) {}
   if (!REG_URL || REG_URL.indexOf('PENDIENTE') === 0) return;
   fetch(REG_URL + '?token=' + encodeURIComponent(REG_TOKEN) + '&action=clientes')
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (d && d.ok && d.clientes && d.clientes.length) {
-        CLIENTES = d.clientes;
-        try { localStorage.setItem('tth_clientes', JSON.stringify(CLIENTES)); } catch (e) {}
+        CLIENTES = unirClientes(d.clientes);
+        try { localStorage.setItem('tth_clientes', JSON.stringify(d.clientes)); } catch (e) {}
       }
     })
     .catch(function () { /* sin red: se usa la copia guardada */ });
+}
+
+function nifLimpio(s) {
+  return (s || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// La hoja trae una fila por contacto y cuenta. Quien está en las dos cuentas
+// con el mismo NIF sale una sola vez, con el id de cada una. Sin NIF no se
+// une nada (dos personas pueden llamarse igual), y dos contactos con el mismo
+// NIF dentro de una misma cuenta siguen saliendo por separado, como hasta ahora.
+function unirClientes(filas) {
+  const salida = [], porNif = {};
+  (filas || []).forEach(function (f) {
+    const cta = f.cuenta || 'es';
+    const nif = nifLimpio(f.nif);
+    let c = null;
+    if (nif) c = (porNif[nif] || []).find(function (x) { return !x.ids[cta]; }) || null;
+    if (!c) {
+      c = { nombre: f.nombre, nif: f.nif || '', ids: {}, nombres: {} };
+      salida.push(c);
+      if (nif) (porNif[nif] = porNif[nif] || []).push(c);
+    }
+    c.ids[cta] = f.id;
+    c.nombres[cta] = f.nombre;
+  });
+  return salida;
+}
+
+// La cuenta de Holded donde se factura según el país marcado.
+function cuentaSel() {
+  return CUENTA_DE_PAIS[paisSel] || 'es';
 }
 
 function sinTildes(s) {
@@ -641,10 +706,11 @@ function buscarClientes() {
   const cont = document.getElementById('resultados');
   if (q.length < 2) { cont.innerHTML = ''; return; }
 
-  const cta = paisSel === 'UK' ? 'uk' : 'es';
   const hallados = CLIENTES
-    .filter(function (c) { return (c.cuenta || 'es') === cta; })
-    .filter(function (c) { return sinTildes(c.nombre).indexOf(q) >= 0 || sinTildes(c.nif).indexOf(q) >= 0; })
+    .filter(function (c) {
+      return sinTildes(c.nif).indexOf(q) >= 0 ||
+             Object.keys(c.nombres).some(function (k) { return sinTildes(c.nombres[k]).indexOf(q) >= 0; });
+    })
     .slice(0, 25);
 
   if (!hallados.length) {
@@ -656,23 +722,45 @@ function buscarClientes() {
   hallados.forEach(function (c) {
     const d = document.createElement('div');
     d.className = 'res-item';
-    d.innerHTML = '<div class="res-n">' + c.nombre + '</div>'
-                + '<div class="res-d">' + (c.nif || 'sin NIF') + '</div>';
+    d.innerHTML = '<div class="res-n">' + nombreDe(c) + '</div>'
+                + '<div class="res-d">' + (c.nif || 'sin NIF') + ' · ' + cuentasDe(c) + '</div>';
     d.addEventListener('click', function () { elegirCliente(c); });
     cont.appendChild(d);
   });
+}
+
+// El nombre tal como está en la cuenta donde se factura (si está en ella).
+function nombreDe(c) {
+  return c.nombres[cuentaSel()] || c.nombre;
+}
+
+// 'España', 'UK' o 'España y UK'.
+function cuentasDe(c) {
+  return ['es', 'uk'].filter(function (k) { return c.ids[k]; })
+                     .map(function (k) { return NOMBRE_CUENTA[k]; }).join(' y ');
 }
 
 function elegirCliente(c) {
   clienteSel = c;
   document.getElementById('resultados').innerHTML = '';
   document.getElementById('f-buscar').value = '';
+  pintarElegido();
+  document.getElementById('err-elegido').classList.remove('show');
+}
+
+function pintarElegido() {
+  const c = clienteSel;
   const el = document.getElementById('elegido');
-  el.innerHTML = '<div class="elegido-n">' + c.nombre + '</div>'
+  let alta = '';
+  if (paisSel && !c.ids[cuentaSel()]) {
+    alta = '<div class="elegido-d">Solo está en ' + cuentasDe(c) + ': se dará de alta en '
+         + NOMBRE_CUENTA[cuentaSel()] + ' al facturar.</div>';
+  }
+  el.innerHTML = '<div class="elegido-n">' + nombreDe(c) + '</div>'
                + '<div class="elegido-d">' + (c.nif || 'sin NIF') + '</div>'
+               + alta
                + '<button type="button" class="btn-cambiar" onclick="quitarCliente()">cambiar</button>';
   el.classList.add('show');
-  document.getElementById('err-elegido').classList.remove('show');
 }
 
 function quitarCliente() {
@@ -787,7 +875,7 @@ function validarUK() {
 function enviarFactura() {
   let ok = true;
   const cliente  = (tipoCliente === 'existente' && clienteSel)
-                   ? clienteSel.nombre
+                   ? nombreDe(clienteSel)
                    : document.getElementById('f-cliente').value.trim();
   const dni      = document.getElementById('f-dni').value.trim().toUpperCase();
   const direccion= document.getElementById('f-direccion').value.trim();
@@ -848,9 +936,14 @@ function enviarFactura() {
   registrar({
     tipo: 'factura',
     centro: centroSel, pais: paisSel, fecha: fecha,
+    // holded_id: el contacto en la cuenta donde se factura ('' si aún no está
+    // allí). holded_ids: dónde existe, para copiar la ficha si hay que darlo
+    // de alta en la otra cuenta.
     cliente: { tipo: tipoCliente, nombre: cliente, dni: dni,
                direccion: direccion, email: email,
-               holded_id: clienteSel ? clienteSel.id : '' },
+               holded_id: clienteSel ? (clienteSel.ids[cuentaSel()] || '') : '',
+               holded_ids: clienteSel ? clienteSel.ids : {},
+               nif: clienteSel ? clienteSel.nif : '' },
     lineas: regLineas,
     totales: { base: r2(base), iva: r2(iva), total: r2(total) },
     cobro: { pagado: cobrado === 'si', importe: r2(importe), metodo: metodoSel },
@@ -870,8 +963,9 @@ function resetFactura() {
   document.getElementById('resultados').innerHTML='';
   document.getElementById('bloque-buscar').style.display='none';
   document.getElementById('bloque-nombre').style.display='block';
-  document.querySelectorAll('[data-cobrado],[data-metodo]').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#screen-factura [data-cobrado], #screen-factura [data-metodo]').forEach(b=>b.classList.remove('selected'));
   cobrado=''; metodoSel='';
+  actualizarMetodos();
   document.getElementById('bloque-cobro').style.display='none';
   document.getElementById('f-importe').value='';
   document.getElementById('label-dni').textContent='DNI / NIE / CIF';
@@ -887,7 +981,7 @@ function resetFactura() {
 // ══════════════════════════════════════════
 const vp = { pago:'', metodo:'' };
 function selPago(tipo, el) {
-  document.querySelectorAll(`[data-${tipo}]`).forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll(`#screen-pago [data-${tipo}]`).forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
   vp[tipo] = el.dataset[tipo];
   document.getElementById('p-err-'+tipo).classList.remove('show');
@@ -916,7 +1010,7 @@ function enviarPago() {
 function resetPago() {
   document.getElementById('p-cliente').value='';
   document.getElementById('p-monto').value='';
-  document.querySelectorAll('[data-pago],[data-metodo]').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#screen-pago [data-pago], #screen-pago [data-metodo]').forEach(b=>b.classList.remove('selected'));
   vp.pago=''; vp.metodo='';
   document.querySelectorAll('#screen-pago .error-msg').forEach(e=>e.classList.remove('show'));
   setFecha('p-fecha');
@@ -929,6 +1023,7 @@ setFecha('f-fecha');
 setFecha('p-fecha');
 renderServicios();
 calcularTotales();
+actualizarMetodos();
 vaciarCola();   // reintenta lo que quedara pendiente por falta de red
 cargarClientes();
 document.getElementById('f-buscar').addEventListener('input', buscarClientes);
